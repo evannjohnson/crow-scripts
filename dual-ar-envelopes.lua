@@ -1,5 +1,9 @@
 --- dual ar envelopes
--- description
+-- requires txi
+-- 2 linear attack release envelopes (no sustain)
+-- inputs 1 and 2 trigger envelopes on outputs 1 and 2
+-- txi knobs 1/3 control length of the envs
+-- knobs 2/4 control ratio of attack to release (ramp shape)
 
 function init()
     input[1].mode('change',1.0,0.1,'rising')
