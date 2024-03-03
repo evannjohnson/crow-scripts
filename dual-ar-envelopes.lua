@@ -1,62 +1,85 @@
 --- dual ar envelopes
 -- requires txi
--- 2 triggered linear attack release envelopes (no sustain)
+-- 2 triggered linear attack release envelopes
 -- inputs 1 and 2 trigger envelopes on outputs 1 and 2
--- txi knobs 1/3 control length of the envs
--- knobs 2/4 control ratio of attack to release (ramp shape)
+-- txi knobs 1/3 control length of the envs (default max length is 4 sec)
+-- knobs 2/4 control ratio of attack to release (default shape is linear)
+-- txi ins 1/3 add to knobs 1/3, -5v - +5v range, can add beyond knob max to reach double the max envelope time
+-- ins 2/4 add to knobs 2/4
+--
+-- access secondary parameters by patching a steady 1 volt to input 2
+-- seconday mode exits when input 2 stops reading a steady 1v
+-- knobs control the following in secondary mode (txi in behavior does not change):
+-- knob 1: set the max length of both envelopes (min=1 sec, max=11 sec)
+-- knob 2: set the shape of both envelopes (min = logarithmic, midpoint = linear, max = exponential
+-- knob 3: set the max length of envelope 2
+-- knob 4: set the shape of envelope 2
+-- 
+-- when switching between the modes, the knobs will not change the parameter values until the knob is moved, at which point the relevant parameter will jump to match the position of the knob
 
-parameters = {
-    len1 = 0,
-    lenOffset1 = 0,
-    lenRange1 = 4,
-    ratio1 = 0,
-    ratioOffset1 = 0,
-    shape1 = 'linear',
-    len2 = 0,
-    lenOffset2 = 0,
-    lenRange2 = 4,
-    ratio2 = 0,
-    ratioOffset2 = 0,
-    shape2 = 'linear'
-}
+parameters = {}
+for i = 1, 2 do
+    parameters[i] = {
+        len = 0, -- knobs 1/3
+        lenOffset = 0, -- cv 1/3
+        lenRange = 4, -- secondary mode knobs 1/3
+        ratio = 0, -- knobs 2/4
+        ratioOffset = 0, -- cv 2/4
+        shape = 'linear', -- secondary mode knobs 2/4 logarithmic<linear<exponential
+    }
+end
 
 function init()
     input[1].mode('change', 1.0, 0.1, 'rising')
     input[2].mode('change', 1.0, 0.1, 'rising')
 
-    output[4].volts = .35
-
     currentMode = 'primary'
-    primaryUpdateLoop = clock.run(parameterUpdater,'primary')
+    clock.run(function()
+        for i = 1, 4 do
+            ii.txi.get('param', i)
+            ii.txi.get('in', i)
+            clock.sleep(.1)
+            handlers.primary.param[i](txiVals.param[i])
+            handlers.primary.cv[i](txiVals.cv[i])
+        end
+    end)
+    primaryUpdateLoop = clock.run(parameterUpdater, 'primary')
+end
+
+function envelopeTrigger(num)
+    local len = (parameters[num].len + parameters[num].lenOffset) * parameters[num].lenRange
+
+    ratio = parameters[num].ratio + parameters[num].ratioOffset
+    ratio = math.max(0,math.min(ratio,1))
+
+    local attack = len * parameters[num].ratio
+    local release = len * (1 - parameters[num].ratio)
+
+    print('trigger env '..num)
+    print('attack '..attack)
+    print('release '..release)
+
+    output[num].action = ar(attack, release, 8, parameters[num].shape)
+    output[num](s)
 end
 
 input[1].change = function(state)
-    local len = (parameters.len1 + parameters.lenOffset1) * parameters.lenRange1
-    local attack = len * parameters.ratio1
-    local release = len * (1 - parameters.ratio1)
-
-    output[1].action = ar(attack, release, 8, parameters.shape1)
-    output[1](s)
+    envelopeTrigger(1)
 end
 
 input[2].change = function(state)
-    local len = (parameters.len2 + parameters.lenOffset2) * parameters.lenRange2
-    local attack = len * parameters.ratio2
-    local release = len * (1 - parameters.ratio1)
-
-    output[2].action = ar(attack, release, 8, parameters.shape2)
-    output[2](s)
+    envelopeTrigger(2)
 end
 
 -- mode change code
 function setMode(mode)
     if mode == 'primary' and currentMode ~= 'primary' then
         clock.cancel(secondaryUpdateLoop)
-        primaryUpdateLoop = clock.run(parameterUpdater,'primary')
+        primaryUpdateLoop = clock.run(parameterUpdater, 'primary')
         currentMode = 'primary'
     elseif mode == 'secondary' and currentMode ~= 'secondary' then
         clock.cancel(primaryUpdateLoop)
-        secondaryUpdateLoop = clock.run(parameterUpdater,'secondary')
+        secondaryUpdateLoop = clock.run(parameterUpdater, 'secondary')
         currentMode = 'secondary'
     end
 end
@@ -66,10 +89,12 @@ clock.run(function()
 
     while true do
         clock.sleep(0.1)
-        local current = math.floor(input[2].volts * 100)
-        if (prev >= 34 and prev <= 36 and
-                current >= 34 and current <= 36) then
+        local current = input[2].volts
+        if (prev >= .98 and prev <= 1.02 and
+                current >= .98 and current <= 1.02) then
             setMode('secondary')
+        else
+            setMode('primary')
         end
         prev = current
     end
@@ -91,90 +116,91 @@ end
 clock.run(function()
     local n = 1
     while true do
-        clock.sleep(0.01) -- set the polling speed
+        clock.sleep(0.01)
         ii.txi.get('param', n)
         ii.txi.get('in', n)
         n = (n % 4) + 1
     end
 end)
 
-local handlers = {
+handlers = {
     primary = {
         param = {
             [1] = function(val)
-                parameters.len1 = val / 10
+                parameters[1].len = val / 10
             end,
             [2] = function(val)
-                parameters.ratio1 = val / 10
+                parameters[1].ratio = val / 10
             end,
             [3] = function(val)
-                parameters.len2 = val / 10
+                parameters[2].len = val / 10
             end,
             [4] = function(val)
-                parameters.ratio2 = val / 10
+                parameters[2].ratio = val / 10
             end
         },
         cv = {
             [1] = function(val)
-                parameters.lenOffset1 = val / 5
+                parameters[1].lenOffset = val / 5
             end,
             [2] = function(val)
-                parameters.ratioOffset1 = val / 5
+                parameters[1].ratioOffset = val / 5
             end,
             [3] = function(val)
-                parameters.lenOffset2 = val / 5
+                parameters[2].lenOffset = val / 5
             end,
             [4] = function(val)
-                parameters.ratioOffset2 = val / 5
+                parameters[2].ratioOffset = val / 5
             end
         }
     },
     secondary = {
         param = {
             [1] = function(val)
-                parameters.lenRange1 = 1 + val
-                parameters.lenRange2 = 1 + val
+                parameters[1].lenRange = 1 + val
+                parameters[2].lenRange = 1 + val
             end,
             [2] = function(val)
                 if val < 2 then
-                    parameters.shape1 = 'log'
-                    parameters.shape2 = 'log'
+                    parameters[1].shape = 'log'
+                    parameters[2].shape = 'log'
                 elseif val > 8 then
-                    parameters.shape1 = 'exp'
-                    parameters.shape2 = 'exp'
+                    parameters[1].shape = 'exp'
+                    parameters[2].shape = 'exp'
                 else
-                    parameters.shape1 = 'linear'
-                    parameters.shape2 = 'linear'
+                    parameters[1].shape = 'linear'
+                    parameters[2].shape = 'linear'
                 end
             end,
             [3] = function(val)
-                parameters.lenRange2 = 1 + val
+                parameters[2].lenRange = 1 + val
             end,
             [4] = function(val)
                 if val < 2 then
-                    parameters.shape2 = 'log'
+                    parameters[2].shape = 'log'
                 elseif val > 8 then
-                    parameters.shape2 = 'exp'
+                    parameters[2].shape = 'exp'
                 else
-                    parameters.shape2 = 'linear'
+                    parameters[2].shape = 'linear'
                 end
             end
         },
         cv = {
             [1] = function(val)
-                parameters.lenOffset1 = val / 5
+                parameters[1].lenOffset = val / 5
             end,
             [2] = function(val)
-                parameters.ratioOffset1 = val / 5
+                parameters[1].ratioOffset = val / 5
             end,
             [3] = function(val)
-                parameters.lenOffset2 = val / 5
+                parameters[2].lenOffset = val / 5
             end,
             [4] = function(val)
-                parameters.ratioOffset2 = val / 5
+                parameters[2].ratioOffset = val / 5
             end
         }
-    }}
+    }
+}
 
 function parameterUpdater(mode)
     local prevs = {
@@ -193,7 +219,7 @@ function parameterUpdater(mode)
         if not prevParamVal then -- initialize
             prevs.param[n] = currentParamVal
         elseif math.abs(currentParamVal - prevParamVal) > 0.005 then
-            print('detected param '..n..' change')
+            -- print('detected param ' .. n .. ' change')
             handlers[mode].param[n](currentParamVal)
             prevs.param[n] = currentParamVal
         end
