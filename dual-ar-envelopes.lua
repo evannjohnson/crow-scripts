@@ -69,7 +69,7 @@ txiVals = {
 }
 
 ii.txi.event = function(e, val)
-    if e.name == 'in' then
+    if e.name == 'in' then -- don't use 'in' because its a lua keyword
         e.name = 'cv'
     end
     txiVals[e.name][e.arg] = val
@@ -151,4 +151,5 @@ txiProcessors = {
     end
 }
 
-clock.run(txiProcessors.basic)
+basicUpdateLoop = clock.run(txiProcessors.basic)
+
