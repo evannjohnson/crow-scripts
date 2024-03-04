@@ -33,6 +33,10 @@ function init()
     input[1].mode('change', 1.0, 0.1, 'rising')
     input[2].mode('change', 1.0, 0.1, 'rising')
 
+    output[3].action = pulse(0.001)
+    output[4].action = pulse(0.001)
+    eosClock = {}
+
     currentMode = 'primary'
     clock.run(function()
         for i = 1, 4 do
@@ -61,6 +65,15 @@ function envelopeTrigger(num)
 
     output[num].action = ar(attack, release, 8, parameters[num].shape)
     output[num](s)
+
+    if eosClock[num] then
+        clock.cancel(eosClock[num])
+    end
+
+    eosClock[num] = clock.run(function(len,num)
+        clock.sleep(len)
+        output[num + 2](s)
+    end,len,num)
 end
 
 input[1].change = function(state)
