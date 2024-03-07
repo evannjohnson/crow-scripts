@@ -14,30 +14,46 @@
 -- knob 2: set the shape of both envelopes (min = logarithmic, midpoint = linear, max = exponential
 -- knob 3: set the max length of envelope 2
 -- knob 4: set the shape of envelope 2
--- 
+--
 -- when switching between the modes, the knobs will not change the parameter values until the knob is moved, at which point the relevant parameter will jump to match the position of the knob
 
 parameters = {}
 for i = 1, 2 do
     parameters[i] = {
-        len = 0, -- knobs 1/3
-        lenOffset = 0, -- cv 1/3
-        lenRange = 4, -- secondary mode knobs 1/3
-        ratio = 0, -- knobs 2/4
-        ratioOffset = 0, -- cv 2/4
+        len = 0,          -- knobs 1/3
+        lenOffset = 0,    -- cv 1/3
+        lenRange = 4,     -- secondary mode knobs 1/3
+        ratio = 0,        -- knobs 2/4
+        ratioOffset = 0,  -- cv 2/4
         shape = 'linear', -- secondary mode knobs 2/4 logarithmic<linear<exponential
     }
 end
 
 function init()
-    input[1].mode('change', 1.0, 0.1, 'rising')
-    input[2].mode('change', 1.0, 0.1, 'rising')
+    -- for i in 1, 2 do
+    --     output[i].action = ar(
+    --         dyn{attack = 1},
+    --         dyn{release = 1},
+    --         8, -- amplitude in volts
+    --         dyn{shape = 'linear'})
+    -- end
 
-    output[3].action = pulse(0.001)
-    output[4].action = pulse(0.001)
-    eosClock = {}
+    -- for i in 1,2 do
+    --     output[i].action = {
+    --         to(8,dyn{attack = 1},'linear'),
+    --         to(0,dyn{release = 1},'linear')
+    --     }
+    -- end
 
-    currentMode = 'primary'
+    output[1].action = {
+            to(8,dyn{attack = 1},'linear'),
+            to(0,dyn{release = 1},'linear')
+        }
+    output[2].action = {
+                to(8,dyn{attack = 1},'linear'),
+                to(0,dyn{release = 1},'linear')
+            }
+    -- initialize values
     clock.run(function()
         for i = 1, 4 do
             ii.txi.get('param', i)
@@ -47,42 +63,65 @@ function init()
             handlers.primary.cv[i](txiVals.cv[i])
         end
     end)
+
+    currentMode = 'primary'
     primaryUpdateLoop = clock.run(parameterUpdater, 'primary')
+
+    input[1].mode('change', 1.0, 0.1, 'rising')
+    input[2].mode('change', 1.0, 0.1, 'rising')
+
+    input[1].change = function(state)
+        output[1](s)
+    end
+    input[2].change = function(state)
+        output[2](s)
+    end
+
+    output[3].action = pulse(0.001)
+    output[4].action = pulse(0.001)
+    eosClock = {}
+end
+
+function updateAr(num)
+    local len = (parameters[num].len + parameters[num].lenOffset) * parameters[num].lenRange
+    local ratio = parameters[num].ratio + parameters[num].ratioOffset
+    ratio = math.max(0, math.min(ratio, 1))
+
+    attack = len * ratio
+    release = len * (1 - ratio)
+
+    print('attack '..num..' '..attack)
+    print('release '..num..' '..release)
+    output[num].dyn.attack = len * ratio
+    output[num].dyn.release = len * (1 - ratio)
 end
 
 function envelopeTrigger(num)
-    local len = (parameters[num].len + parameters[num].lenOffset) * parameters[num].lenRange
+    -- local len = (parameters[num].len + parameters[num].lenOffset) * parameters[num].lenRange
 
-    ratio = parameters[num].ratio + parameters[num].ratioOffset
-    ratio = math.max(0,math.min(ratio,1))
+    -- ratio = parameters[num].ratio + parameters[num].ratioOffset
+    -- ratio = math.max(0, math.min(ratio, 1))
 
-    local attack = len * parameters[num].ratio
-    local release = len * (1 - parameters[num].ratio)
+    -- local attack = len * parameters[num].ratio
+    -- local release = len * (1 - parameters[num].ratio)
 
-    print('trigger env '..num)
-    print('attack '..attack)
-    print('release '..release)
+    -- print('trigger env ' .. num)
+    -- print('attack ' .. attack)
+    -- print('release ' .. release)
 
-    output[num].action = ar(attack, release, 8, parameters[num].shape)
+    -- output[num].action = ar(attack, release, 8, parameters[num].shape)
     output[num](s)
 
-    if eosClock[num] then
-        clock.cancel(eosClock[num])
-    end
+    -- if eosClock[num] then
+    --     clock.cancel(eosClock[num])
+    -- end
 
-    eosClock[num] = clock.run(function(len,num)
-        clock.sleep(len)
-        output[num + 2](s)
-    end,len,num)
+    -- eosClock[num] = clock.run(function(len, num)
+    --     clock.sleep(len)
+    --     output[num + 2](s)
+    -- end, len, num)
 end
 
-input[1].change = function(state)
-    envelopeTrigger(1)
-end
-
-input[2].change = function(state)
-    envelopeTrigger(2)
-end
 
 -- mode change code
 function setMode(mode)
@@ -141,9 +180,12 @@ handlers = {
         param = {
             [1] = function(val)
                 parameters[1].len = val / 10
+                updateAr(1)
+                print('hey')
             end,
             [2] = function(val)
                 parameters[1].ratio = val / 10
+                updateAr(1)
             end,
             [3] = function(val)
                 parameters[2].len = val / 10
@@ -155,9 +197,11 @@ handlers = {
         cv = {
             [1] = function(val)
                 parameters[1].lenOffset = val / 5
+                updateAr(1)
             end,
             [2] = function(val)
                 parameters[1].ratioOffset = val / 5
+                updateAr(1)
             end,
             [3] = function(val)
                 parameters[2].lenOffset = val / 5
@@ -172,29 +216,41 @@ handlers = {
             [1] = function(val)
                 parameters[1].lenRange = 1 + val
                 parameters[2].lenRange = 1 + val
+                updateAr(1)
+                updateAr(2)
             end,
             [2] = function(val)
                 if val < 2 then
                     parameters[1].shape = 'log'
                     parameters[2].shape = 'log'
+                    output[1].dyn.shape = 'log'
+                    output[2].dyn.shape = 'log'
                 elseif val > 8 then
                     parameters[1].shape = 'exp'
                     parameters[2].shape = 'exp'
+                    output[1].dyn.shape = 'exp'
+                    output[2].dyn.shape = 'exp'
                 else
                     parameters[1].shape = 'linear'
                     parameters[2].shape = 'linear'
+                    output[1].dyn.shape = 'linear'
+                    output[2].dyn.shape = 'linear'
                 end
             end,
             [3] = function(val)
                 parameters[2].lenRange = 1 + val
+                updateAr(2)
             end,
             [4] = function(val)
                 if val < 2 then
                     parameters[2].shape = 'log'
+                    output[2].dyn.shape = 'log'
                 elseif val > 8 then
                     parameters[2].shape = 'exp'
+                    output[2].dyn.shape = 'exp'
                 else
                     parameters[2].shape = 'linear'
+                    output[2].dyn.shape = 'linear'
                 end
             end
         },
@@ -229,10 +285,10 @@ function parameterUpdater(mode)
         local prevParamVal = prevs.param[n]
         local prevCvVal = prevs.cv[n]
 
-        if not prevParamVal then -- initialize
+        if not prevParamVal then -- initialize on mode change
             prevs.param[n] = currentParamVal
         elseif math.abs(currentParamVal - prevParamVal) > 0.005 then
-            -- print('detected param ' .. n .. ' change')
+            print('detected param ' .. n .. ' change')
             handlers[mode].param[n](currentParamVal)
             prevs.param[n] = currentParamVal
         end
