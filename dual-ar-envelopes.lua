@@ -46,13 +46,13 @@ function init()
     -- end
 
     output[1].action = {
-            to(8,dyn{attack = 1},'linear'),
-            to(0,dyn{release = 1},'linear')
-        }
+        to(8, dyn { attack = 1 }, 'linear'),
+        to(0, dyn { release = 1 }, 'linear')
+    }
     output[2].action = {
-                to(8,dyn{attack = 1},'linear'),
-                to(0,dyn{release = 1},'linear')
-            }
+        to(8, dyn { attack = 1 }, 'linear'),
+        to(0, dyn { release = 1 }, 'linear')
+    }
     -- initialize values
     clock.run(function()
         for i = 1, 4 do
@@ -71,15 +71,17 @@ function init()
     input[2].mode('change', 1.0, 0.1, 'rising')
 
     input[1].change = function(state)
-        output[1](s)
+        -- output[2].volts = 0
+        output[1]()
     end
+
     input[2].change = function(state)
-        output[2](s)
+        -- output[2].volts = 0
+        output[2]()
     end
 
     output[3].action = pulse(0.001)
     output[4].action = pulse(0.001)
-    eosClock = {}
 end
 
 function updateAr(num)
@@ -90,38 +92,15 @@ function updateAr(num)
     attack = len * ratio
     release = len * (1 - ratio)
 
-    print('attack '..num..' '..attack)
-    print('release '..num..' '..release)
+    print('attack ' .. num .. ' ' .. attack)
+    print('release ' .. num .. ' ' .. release)
     output[num].dyn.attack = len * ratio
     output[num].dyn.release = len * (1 - ratio)
 end
 
 function envelopeTrigger(num)
-    -- local len = (parameters[num].len + parameters[num].lenOffset) * parameters[num].lenRange
-
-    -- ratio = parameters[num].ratio + parameters[num].ratioOffset
-    -- ratio = math.max(0, math.min(ratio, 1))
-
-    -- local attack = len * parameters[num].ratio
-    -- local release = len * (1 - parameters[num].ratio)
-
-    -- print('trigger env ' .. num)
-    -- print('attack ' .. attack)
-    -- print('release ' .. release)
-
-    -- output[num].action = ar(attack, release, 8, parameters[num].shape)
     output[num](s)
-
-    -- if eosClock[num] then
-    --     clock.cancel(eosClock[num])
-    -- end
-
-    -- eosClock[num] = clock.run(function(len, num)
-    --     clock.sleep(len)
-    --     output[num + 2](s)
-    -- end, len, num)
 end
-
 
 -- mode change code
 function setMode(mode)
@@ -181,7 +160,6 @@ handlers = {
             [1] = function(val)
                 parameters[1].len = val / 10
                 updateAr(1)
-                print('hey')
             end,
             [2] = function(val)
                 parameters[1].ratio = val / 10
@@ -189,9 +167,11 @@ handlers = {
             end,
             [3] = function(val)
                 parameters[2].len = val / 10
+                updateAr(2)
             end,
             [4] = function(val)
                 parameters[2].ratio = val / 10
+                updateAr(2)
             end
         },
         cv = {
@@ -205,9 +185,11 @@ handlers = {
             end,
             [3] = function(val)
                 parameters[2].lenOffset = val / 5
+                updateAr(2)
             end,
             [4] = function(val)
                 parameters[2].ratioOffset = val / 5
+                updateAr(2)
             end
         }
     },
@@ -288,7 +270,7 @@ function parameterUpdater(mode)
         if not prevParamVal then -- initialize on mode change
             prevs.param[n] = currentParamVal
         elseif math.abs(currentParamVal - prevParamVal) > 0.005 then
-            print('detected param ' .. n .. ' change')
+            -- print('detected param ' .. n .. ' change')
             handlers[mode].param[n](currentParamVal)
             prevs.param[n] = currentParamVal
         end
