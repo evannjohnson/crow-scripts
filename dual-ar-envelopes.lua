@@ -46,10 +46,12 @@ function init()
     -- end
 
     output[1].action = {
+        -- to(0,0),
         to(8, dyn { attack = 1 }, 'linear'),
         to(0, dyn { release = 1 }, 'linear')
     }
     output[2].action = {
+        -- to(0,0),
         to(8, dyn { attack = 1 }, 'linear'),
         to(0, dyn { release = 1 }, 'linear')
     }
@@ -71,12 +73,10 @@ function init()
     input[2].mode('change', 1.0, 0.1, 'rising')
 
     input[1].change = function(state)
-        -- output[2].volts = 0
         output[1]()
     end
 
     input[2].change = function(state)
-        -- output[2].volts = 0
         output[2]()
     end
 
