@@ -30,28 +30,13 @@ for i = 1, 2 do
 end
 
 function init()
-    -- for i in 1, 2 do
-    --     output[i].action = ar(
-    --         dyn{attack = 1},
-    --         dyn{release = 1},
-    --         8, -- amplitude in volts
-    --         dyn{shape = 'linear'})
-    -- end
-
-    -- for i in 1,2 do
-    --     output[i].action = {
-    --         to(8,dyn{attack = 1},'linear'),
-    --         to(0,dyn{release = 1},'linear')
-    --     }
-    -- end
-
     output[1].action = {
-        -- to(0,0),
+        to(0, 0),
         to(8, dyn { attack = 1 }, 'linear'),
         to(0, dyn { release = 1 }, 'linear')
     }
     output[2].action = {
-        -- to(0,0),
+        to(0, 0),
         to(8, dyn { attack = 1 }, 'linear'),
         to(0, dyn { release = 1 }, 'linear')
     }
@@ -96,6 +81,15 @@ function updateAr(num)
     print('release ' .. num .. ' ' .. release)
     output[num].dyn.attack = len * ratio
     output[num].dyn.release = len * (1 - ratio)
+end
+
+function updateShape(num)
+    output[num].action = {
+        to(0, 0),
+        to(8, dyn { attack = 1 }, parameters[num].shape),
+        to(0, dyn { release = 1 }, parameters[num].shape)
+    }
+    updateAr(num)
 end
 
 function envelopeTrigger(num)
@@ -205,18 +199,18 @@ handlers = {
                 if val < 2 then
                     parameters[1].shape = 'log'
                     parameters[2].shape = 'log'
-                    output[1].dyn.shape = 'log'
-                    output[2].dyn.shape = 'log'
+                    updateShape(1)
+                    updateShape(2)
                 elseif val > 8 then
                     parameters[1].shape = 'exp'
                     parameters[2].shape = 'exp'
-                    output[1].dyn.shape = 'exp'
-                    output[2].dyn.shape = 'exp'
+                    updateShape(1)
+                    updateShape(2)
                 else
                     parameters[1].shape = 'linear'
                     parameters[2].shape = 'linear'
-                    output[1].dyn.shape = 'linear'
-                    output[2].dyn.shape = 'linear'
+                    updateShape(1)
+                    updateShape(2)
                 end
             end,
             [3] = function(val)
@@ -226,13 +220,13 @@ handlers = {
             [4] = function(val)
                 if val < 2 then
                     parameters[2].shape = 'log'
-                    output[2].dyn.shape = 'log'
+                    updateShape(2)
                 elseif val > 8 then
                     parameters[2].shape = 'exp'
-                    output[2].dyn.shape = 'exp'
+                    updateShape(2)
                 else
                     parameters[2].shape = 'linear'
-                    output[2].dyn.shape = 'linear'
+                    updateShape(2)
                 end
             end
         },
