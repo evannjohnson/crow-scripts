@@ -83,6 +83,33 @@ function updateAr(num)
     output[num].dyn.release = len * (1 - ratio)
 end
 
+--[[
+knobPos: should be 0-1
+points: an array of tables. the tables should have 2 indexes, 'pos' and 'val'.
+    - pos: the actual knob position to map to val
+    - val: the position that would be output if the knob were set to the actual position specified by pos
+    knobPos will be smoothly mapped to the the output between the points
+    the array of tables must be sorted by the table's pos and val, and sorting by either of the tables' indices should result in the same sort
+    ex. one point with pos .5 and value .2 would cause the first 50% of the knob to map to 0-.2, and the second half to map to .2-1
+--]]
+function variableResponse(pos, points)
+    local floor = 0
+    points[0] = {pos = 0,val = 0}
+    points[#points + 1] = {pos = 1,val = 1}
+    for i,point in ipairs(points) do
+        if point.pos >= pos then -- hit
+            local posBottom = points[i-1].pos
+            local valBottom = points[i-1].val
+            local posRange = point.pos - posBottom
+            local valRange = point.val - valBottom
+            local segmentPercentage = (pos - posBottom) / posRange
+            local segmentVal = segmentPercentage * valRange
+
+            return valBottom + segmentVal
+        end
+    end
+end
+
 function updateShape(num)
     output[num].action = {
         to(0, 0),
