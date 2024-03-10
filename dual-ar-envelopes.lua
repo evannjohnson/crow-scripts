@@ -17,6 +17,12 @@
 --
 -- when switching between the modes, the knobs will not change the parameter values until the knob is moved, at which point the relevant parameter will jump to match the position of the knob
 
+-- possible values:
+-- 'fromZero': when receiving a trigger during a cycle, immediately set the output to 0 and start the new cycle
+-- 'fromCurrent': when receiving a trigger during a cycle, immediately start the new cycle, with the starting point at the current value. This can result in unexpected slopes, as the envelope calculates the time that the slope would be set to to achieve the specified ration as if the envelope was starting from zero. ex. if the env len is 1 sec, and the ratio is 0.5, the attack will be .5 seconds. This means the attack's slope will be different if it starts from 4 volts than if it starts at 0 volts, since it always climbs to 8 volts.
+-- 'no': ignore triggers while an envelope is active
+retriggerBehavior = "fromZero"
+
 parameters = {}
 for i = 1, 2 do
     parameters[i] = {
