@@ -30,12 +30,14 @@ for i = 1, 2 do
 end
 
 lenResponseCurve = {
-    { pos = .5, val = .2 }
+    { pos = .5, val = .2 },
+    { pos = 1, val = 1}
 }
 
 ratioResponseCurve = {
     { pos = .25, val = .1 },
-    { pos = .75, val = .9 }
+    { pos = .75, val = .9 },
+    { pos = 1, val = 1}
 }
 
 function init()
@@ -79,7 +81,7 @@ function init()
 end
 
 function updateAr(num)
-    local len = variableResponse(parameters[num].len + parameters[num].lenOffset,lenResponseCurve) * parameters[num].lenRange
+    local len = math.max(.0001,variableResponse(parameters[num].len + parameters[num].lenOffset,lenResponseCurve) * parameters[num].lenRange)
     local ratio = variableResponse(parameters[num].ratio + parameters[num].ratioOffset, ratioResponseCurve)
 
     attack = len * ratio
@@ -98,12 +100,12 @@ points: an array of tables. the tables should have 2 indexes, 'pos' and 'val'.
     - val: the position that would be output if the knob were set to the actual position specified by pos
     knobPos will be smoothly mapped to the the output between the points
     the array of tables must be sorted by the table's pos and val, and sorting by either of the tables' indices should result in the same sort
+    the last table in the array should be {pos=1,val=1}
     ex. one point with pos .5 and value .2 would cause the first 50% of the knob to map to 0-.2, and the second half to map to .2-1
 --]]
 function variableResponse(pos, points)
     pos = math.max(0, math.min(pos, 1))
     points[0] = { pos = 0, val = 0 }
-    points[#points + 1] = { pos = 1, val = 1 }
 
     for i, point in ipairs(points) do
         if point.pos >= pos then -- hit
