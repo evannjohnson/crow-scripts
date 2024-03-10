@@ -29,6 +29,15 @@ for i = 1, 2 do
     }
 end
 
+lenResponseCurve = {
+    { pos = .5, val = .2 }
+}
+
+ratioResponseCurve = {
+    { pos = .25, val = .1 },
+    { pos = .75, val = .9 }
+}
+
 function init()
     output[1].action = {
         to(0, 0),
@@ -70,9 +79,8 @@ function init()
 end
 
 function updateAr(num)
-    local len = (parameters[num].len + parameters[num].lenOffset) * parameters[num].lenRange
-    local ratio = parameters[num].ratio + parameters[num].ratioOffset
-    ratio = math.max(0, math.min(ratio, 1))
+    local len = variableResponse(parameters[num].len + parameters[num].lenOffset,lenResponseCurve) * parameters[num].lenRange
+    local ratio = variableResponse(parameters[num].ratio + parameters[num].ratioOffset, ratioResponseCurve)
 
     attack = len * ratio
     release = len * (1 - ratio)
