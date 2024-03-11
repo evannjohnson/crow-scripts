@@ -136,8 +136,8 @@ function updateAr(num)
     attack = len * ratio
     release = len * (1 - ratio)
 
-    print('attack ' .. num .. ' ' .. attack)
-    print('release ' .. num .. ' ' .. release)
+    -- print('attack ' .. num .. ' ' .. attack)
+    -- print('release ' .. num .. ' ' .. release)
     output[num].dyn.attack = len * ratio
     output[num].dyn.release = len * (1 - ratio)
 end
