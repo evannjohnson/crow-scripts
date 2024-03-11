@@ -23,7 +23,7 @@
 -- 'fromCurrent': when receiving a trigger during a cycle, immediately start the new cycle, with the starting point at the current value.
 -- note: This can result in unexpected slopes, as the envelope calculates the time that the slope would be set to to achieve the specified ration as if the envelope was starting from zero.
 -- ex. if the env len is 1 sec, and the ratio is 0.5, the attack will be .5 seconds. This means the attack's slope will be different if it starts from 4 volts than if it starts at 0 volts, since it always climbs to 8 volts.
-retriggerBehavior = "fromCurrent"
+retriggerBehavior = "no"
 
 parameters = {}
 for i = 1, 2 do
@@ -71,6 +71,16 @@ function init()
             to(0, dyn { release = 1 }, 'linear')
         }
     end
+
+    output[1].done = function()
+        parameters[1].active = false
+        output[3]()
+    end
+    output[2].done = function()
+        parameters[2].active = false
+        output[4]()
+    end
+
     -- initialize values
     clock.run(function()
         for i = 1, 4 do
@@ -88,12 +98,30 @@ function init()
     input[1].mode('change', 1.0, 0.1, 'rising')
     input[2].mode('change', 1.0, 0.1, 'rising')
 
-    input[1].change = function(state)
-        output[1]()
-    end
+    if retriggerBehavior == 'no' then
+        input[1].change = function(state)
+            if not parameters[1].active then
+                parameters[1].active = true
+                output[1]()
+            end
+        end
 
-    input[2].change = function(state)
-        output[2]()
+        input[2].change = function(state)
+            if not parameters[2].active then
+                parameters[2].active = true
+                output[2]()
+            end
+        end
+    else
+        input[1].change = function(state)
+            parameters[1].active = true
+            output[1]()
+        end
+
+        input[2].change = function(state)
+            parameters[2].active = true
+            output[2]()
+        end
     end
 
     output[3].action = pulse(0.001)
