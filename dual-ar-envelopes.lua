@@ -18,10 +18,12 @@
 -- when switching between the modes, the knobs will not change the parameter values until the knob is moved, at which point the relevant parameter will jump to match the position of the knob
 
 -- possible values:
--- 'fromZero': when receiving a trigger during a cycle, immediately set the output to 0 and start the new cycle
--- 'fromCurrent': when receiving a trigger during a cycle, immediately start the new cycle, with the starting point at the current value. This can result in unexpected slopes, as the envelope calculates the time that the slope would be set to to achieve the specified ration as if the envelope was starting from zero. ex. if the env len is 1 sec, and the ratio is 0.5, the attack will be .5 seconds. This means the attack's slope will be different if it starts from 4 volts than if it starts at 0 volts, since it always climbs to 8 volts.
 -- 'no': ignore triggers while an envelope is active
-retriggerBehavior = "fromZero"
+-- 'fromZero': when receiving a trigger during a cycle, immediately set the output to 0 and start the new cycle
+-- 'fromCurrent': when receiving a trigger during a cycle, immediately start the new cycle, with the starting point at the current value.
+-- note: This can result in unexpected slopes, as the envelope calculates the time that the slope would be set to to achieve the specified ration as if the envelope was starting from zero.
+-- ex. if the env len is 1 sec, and the ratio is 0.5, the attack will be .5 seconds. This means the attack's slope will be different if it starts from 4 volts than if it starts at 0 volts, since it always climbs to 8 volts.
+retriggerBehavior = "fromCurrent"
 
 parameters = {}
 for i = 1, 2 do
@@ -32,31 +34,43 @@ for i = 1, 2 do
         ratio = 0,        -- knobs 2/4
         ratioOffset = 0,  -- cv 2/4
         shape = 'linear', -- secondary mode knobs 2/4 logarithmic<linear<exponential
+        active = false    -- track whether the envelope is active
     }
 end
 
 lenResponseCurve = {
     { pos = .5, val = .2 },
-    { pos = 1, val = 1}
+    { pos = 1,  val = 1 }
 }
 
 ratioResponseCurve = {
     { pos = .25, val = .1 },
     { pos = .75, val = .9 },
-    { pos = 1, val = 1}
+    { pos = 1,   val = 1 }
 }
 
 function init()
-    output[1].action = {
-        to(0, 0),
-        to(8, dyn { attack = 1 }, 'linear'),
-        to(0, dyn { release = 1 }, 'linear')
-    }
-    output[2].action = {
-        to(0, 0),
-        to(8, dyn { attack = 1 }, 'linear'),
-        to(0, dyn { release = 1 }, 'linear')
-    }
+    if retriggerBehavior == 'fromZero' then
+        output[1].action = {
+            to(0, 0),
+            to(8, dyn { attack = 1 }, 'linear'),
+            to(0, dyn { release = 1 }, 'linear')
+        }
+        output[2].action = {
+            to(0, 0),
+            to(8, dyn { attack = 1 }, 'linear'),
+            to(0, dyn { release = 1 }, 'linear')
+        }
+    else
+        output[1].action = {
+            to(8, dyn { attack = 1 }, 'linear'),
+            to(0, dyn { release = 1 }, 'linear')
+        }
+        output[2].action = {
+            to(8, dyn { attack = 1 }, 'linear'),
+            to(0, dyn { release = 1 }, 'linear')
+        }
+    end
     -- initialize values
     clock.run(function()
         for i = 1, 4 do
@@ -87,7 +101,8 @@ function init()
 end
 
 function updateAr(num)
-    local len = math.max(.0001,variableResponse(parameters[num].len + parameters[num].lenOffset,lenResponseCurve) * parameters[num].lenRange)
+    local len = math.max(.0001,
+        variableResponse(parameters[num].len + parameters[num].lenOffset, lenResponseCurve) * parameters[num].lenRange)
     local ratio = variableResponse(parameters[num].ratio + parameters[num].ratioOffset, ratioResponseCurve)
 
     attack = len * ratio
@@ -128,11 +143,18 @@ function variableResponse(pos, points)
 end
 
 function updateShape(num)
-    output[num].action = {
-        to(0, 0),
-        to(8, dyn { attack = 1 }, parameters[num].shape),
-        to(0, dyn { release = 1 }, parameters[num].shape)
-    }
+    if retriggerBehavior == 'fromZero' then
+        output[num].action = {
+            to(0, 0),
+            to(8, dyn { attack = 1 }, parameters[num].shape),
+            to(0, dyn { release = 1 }, parameters[num].shape)
+        }
+    else
+        output[num].action = {
+            to(8, dyn { attack = 1 }, parameters[num].shape),
+            to(0, dyn { release = 1 }, parameters[num].shape)
+        }
+    end
     updateAr(num)
 end
 
