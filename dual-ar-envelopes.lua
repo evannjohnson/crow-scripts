@@ -1,7 +1,9 @@
 --- dual ar envelopes
 -- requires txi
+--
 -- 2 triggered linear attack release envelopes
 -- inputs 1 and 2 trigger envelopes on outputs 1 and 2
+-- outputs 3/4 are end of fall triggers for outputs 1/2 respectively
 -- txi knobs 1/3 control length of the envs (default max length is 4 sec)
 -- knobs 2/4 control ratio of attack to release (default shape is linear)
 -- txi ins 1/3 add to knobs 1/3, -5v - +5v range, can add beyond knob max to reach double the max envelope time
@@ -9,35 +11,42 @@
 --
 -- access secondary parameters by patching a steady 1 volt to input 2
 -- seconday mode exits when input 2 stops reading a steady 1v
--- knobs control the following in secondary mode (txi in behavior does not change):
+-- knobs control the following in secondary mode (txi in still controls the primary params):
 -- knob 1: set the max length of both envelopes (min=1 sec, max=11 sec)
 -- knob 2: set the shape of both envelopes (min = logarithmic, midpoint = linear, max = exponential
 -- knob 3: set the max length of envelope 2
 -- knob 4: set the shape of envelope 2
 --
--- when switching between the modes, the knobs will not change the parameter values until the knob is moved, at which point the relevant parameter will jump to match the position of the knob
+-- when switching between the modes, the knobs will not change the parameter values until the knob is moved, at which point the parameter will jump to match the position of the knob
 
+-- set retrigger behavior with this variable retriggerBehavior
 -- possible values:
 -- 'no': ignore triggers while an envelope is active
 -- 'fromZero': when receiving a trigger during a cycle, immediately set the output to 0 and start the new cycle
--- 'fromCurrent': when receiving a trigger during a cycle, immediately start the new cycle, with the starting point at the current value.
--- note: This can result in unexpected slopes, as the envelope calculates the time that the slope would be set to to achieve the specified ration as if the envelope was starting from zero.
--- ex. if the env len is 1 sec, and the ratio is 0.5, the attack will be .5 seconds. This means the attack's slope will be different if it starts from 4 volts than if it starts at 0 volts, since it always climbs to 8 volts.
-retriggerBehavior = "no"
+-- 'fromCurrent': when receiving a trigger during a cycle, immediately start the new cycle, with the starting point at the current value. This can result in unexpected slopes, as the slope is determined by the difference between the start and end points of the envelope.
+-- ex. if the env len is 1 sec, and the ratio is 0.5, the attack will be .5 seconds. This means the attack's slope will be different if it starts from 4 volts (like when retriggered befor it completes a cycle) than if it starts at 0 volts, since it always climbs to 8 volts
+
+retriggerBehavior = "fromZero"
+defaultRange = 4 -- length in seconds when knob is maxed (can go further by adding CV)
+defaultShape = 'linear'
 
 parameters = {}
 for i = 1, 2 do
     parameters[i] = {
-        len = 0,          -- knobs 1/3
-        lenOffset = 0,    -- cv 1/3
-        lenRange = 4,     -- secondary mode knobs 1/3
-        ratio = 0,        -- knobs 2/4
-        ratioOffset = 0,  -- cv 2/4
-        shape = 'linear', -- secondary mode knobs 2/4 logarithmic<linear<exponential
-        active = false    -- track whether the envelope is active
+        -- primary params will be set to match knob positions on launch
+        len = 0,              -- knobs 1/3
+        lenOffset = 0,        -- cv 1/3
+        ratio = 0,            -- knobs 2/4
+        ratioOffset = 0,      -- cv 2/4
+        lenMax = defaultMax,  -- default max envelope length
+        shape = defaultShape, -- secondary mode knobs 2/4 log<lin<exp
+        active = false        -- track whether the envelope is active
     }
 end
 
+-- tune these response curves to taste
+-- pos is the knob position, val is what proportion of the param's max value that knob position will be equal to
+-- this allows ex. making the first half of the knob much more sensitive than the last half, for fine-tuning a short envelope
 lenResponseCurve = {
     { pos = .5, val = .2 },
     { pos = 1,  val = 1 }
