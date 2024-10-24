@@ -27,7 +27,7 @@
 -- ex. if the env len is 1 sec, and the ratio is 0.5, the attack will be .5 seconds. This means the attack's slope will be different if it starts from 4 volts (like when retriggered befor it completes a cycle) than if it starts at 0 volts, since it always climbs to 8 volts
 
 retriggerBehavior = "fromZero"
-defaultRange = 4 -- length in seconds when knob is maxed (can go further by adding CV)
+defaultLenMax = 4 -- length in seconds when knob is maxed (can go further by adding CV)
 defaultShape = 'linear'
 
 parameters = {}
@@ -38,7 +38,7 @@ for i = 1, 2 do
         lenOffset = 0,        -- cv 1/3
         ratio = 0,            -- knobs 2/4
         ratioOffset = 0,      -- cv 2/4
-        lenMax = defaultMax,  -- default max envelope length
+        lenMax = defaultLenMax,  -- default max envelope length
         shape = defaultShape, -- secondary mode knobs 2/4 log<lin<exp
         active = false        -- track whether the envelope is active
     }
@@ -139,7 +139,7 @@ end
 
 function updateAr(num)
     local len = math.max(.0001,
-        variableResponse(parameters[num].len + parameters[num].lenOffset, lenResponseCurve) * parameters[num].lenRange)
+        variableResponse(parameters[num].len + parameters[num].lenOffset, lenResponseCurve) * parameters[num].lenMax)
     local ratio = variableResponse(parameters[num].ratio + parameters[num].ratioOffset, ratioResponseCurve)
 
     attack = len * ratio
@@ -293,8 +293,8 @@ handlers = {
     secondary = {
         param = {
             [1] = function(val)
-                parameters[1].lenRange = 1 + val
-                parameters[2].lenRange = 1 + val
+                parameters[1].lenMax = 1 + val
+                parameters[2].lenMax = 1 + val
                 updateAr(1)
                 updateAr(2)
             end,
@@ -317,7 +317,7 @@ handlers = {
                 end
             end,
             [3] = function(val)
-                parameters[2].lenRange = 1 + val
+                parameters[2].lenMax = 1 + val
                 updateAr(2)
             end,
             [4] = function(val)
