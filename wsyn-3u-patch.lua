@@ -1,9 +1,3 @@
--- simple testing of wsyn, intended for interactive use in repl
--- note() plays one note
--- clear() sends note on then note off (0 velocity) to all voices
--- start() starts playing a steady sequence
--- stop() stops the sequence
-
 w = ii.wsyn -- less typing in repl, like w.lpg_time(0)
 
 -- w.ar_mode(1)
@@ -11,8 +5,9 @@ w.curve(5)
 w.ramp(0)
 w.fm_index(0)
 -- w.fm_env(-.35) -- this offsets the minimum CV that comes out of planar
-w.fm_env(-.5) -- this offsets the minimum CV that comes out of planar when attenuated by a mystic 0tennuator at noon
-w.fm_ratio(1.5)
+-- w.fm_env(-.5) -- this offsets the minimum CV that comes out of planar when attenuated by a mystic 0tennuator at noon
+w.fm_env(0)
+w.fm_ratio(4)
 w.lpg_symmetry(-3.5)
 w.lpg_time(-2.73)
 -- w.patch(1, 3) -- this to fm env, use planar unipolar out
@@ -28,10 +23,17 @@ w.lpg_time(-2.73)
 ins = {
     {
         callback = function(v)
-            ii.wsyn.fm_env(varisponse(v, {
+            -- ii.wsyn.fm_env(varisponse(v, {
+            --     { vin = 0,   vout = 0 },
+            --     { vin = 0.3, vout = 0 },
+            --     { vin = 3.5, vout = 0.1 },
+            --     { vin = 6,   vout = 1 },
+            --     { vin = 10,  vout = 3 },
+            -- }))
+            ii.wsyn.fm_index(varisponse(v, {
                 { vin = 0,   vout = 0 },
-                { vin = 0.3, vout = 0 },
-                { vin = 3.5, vout = 0.1 },
+                { vin = 0.3, vout = 0 }, -- wiggle room for left side of joystick
+                { vin = 2.5, vout = 0.3 },
                 { vin = 6,   vout = 1 },
                 { vin = 10,  vout = 3 },
             }))
