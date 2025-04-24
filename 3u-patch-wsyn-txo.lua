@@ -1,4 +1,5 @@
 w = ii.wsyn -- less typing in repl, like w.lpg_time(0)
+t = ii.txo
 
 -- w.ar_mode(1)
 w.curve(5)
@@ -16,6 +17,16 @@ w.lpg_time(-2.73)
 --     w.fm_env,
 --     w.lpg_time
 -- }
+
+function initTxo()
+    clock.sleep(1)
+    t.cv(3, 1)
+    t.osc_wave(3, 0)
+    t.env_att(3, 50)
+    t.env_dec(3, 400)
+end
+
+clock.run(initTxo)
 
 -- tune these response curves to taste
 -- vin is the value at the input, vout is the param value that voltage will be equal to
